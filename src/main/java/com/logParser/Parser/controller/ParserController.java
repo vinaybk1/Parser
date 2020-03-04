@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.logParser.Parser.LogParserException;
+
 @RestController
 public class ParserController {
 
@@ -95,11 +97,6 @@ public class ParserController {
 		logger.debug("Average of Valid Requests::" + average);
 
 		return average;
-	}
-
-	@ExceptionHandler({ Exception.class, IOException.class })
-	public ResponseEntity<Object> handleException() {
-		return new ResponseEntity<Object>("Unable to process the request", HttpStatus.BAD_REQUEST);
 	}
 
 }
