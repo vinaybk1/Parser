@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,25 +21,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ParserController {
 
-	String path = "D:\\Workspace\\JavaLogParser\\src\\data.log";
-
+	@Value("${parserfile.location}")
+	private String path;
+	
 	Logger logger = LoggerFactory.getLogger(ParserController.class);
 
 	@GetMapping(path = "/getTotalRequests", produces = "application/json")
-	public Long getTotalRequests() {
-		Stream<String> stream = null;
+	public Long getTotalRequests() throws IOException {
+		logger.debug("fetching getTotalRequests::");
 		long numberOfReq = 0;
-		try {
-			stream = Files.lines(Paths.get(path));
+			Stream<String> stream = Files.lines(Paths.get(path));
 			numberOfReq = stream.filter(line -> line.startsWith("REQUEST")).filter(line -> !line.contains("\tKO\t"))
 					.count();
-		} catch (IOException e) {
-			logger.error("Error while fetching getTotalRequests::", e.getMessage());
-		} finally {
-			if (stream != null) {
 				stream.close();
-			}
-		}
 
 		logger.debug("Total number of Valid Requests::" + numberOfReq);
 
@@ -46,65 +41,37 @@ public class ParserController {
 	}
 
 	@GetMapping(path = "/getFailedRequests", produces = "application/json")
-	public Long getFailedRequests() {
-		Stream<String> stream = null;
+	public Long getFailedRequests() throws IOException {
 		long numberOfReq = 0;
-		try {
-			stream = Files.lines(Paths.get(path));
+			Stream<String> stream = Files.lines(Paths.get(path));
 			Stream<String> reqStream = Files.lines(Paths.get(path));
 			numberOfReq = stream.count() - reqStream.filter(line -> line.startsWith("REQUEST"))
 					.filter(line -> !line.contains("\tKO\t")).count();// collect(Collectors.toList());
-		} catch (IOException e) {
-			logger.error("Error while fetching getFailedRequests::", e.getMessage());
-		} finally {
-			if (stream != null) {
-				stream.close();
-			}
-		}
-
+			stream.close();
+			reqStream.close();
 		logger.debug("Total number of Failed Requests::" + numberOfReq);
 
 		return numberOfReq;
 	}
 
 	@GetMapping(path = "/get95Percentile", produces = "application/json")
-	public double get95Percentile() {
-		Stream<String> stream = null;
+	public double get95Percentile() throws IOException {
 		Long requestsCount = 0l;
-		try {
-			stream = Files.lines(Paths.get(path));
+			Stream<String> stream = Files.lines(Paths.get(path));
 			requestsCount = stream.filter(line -> line.startsWith("REQUEST")).filter(line -> !line.contains("\tKO\t"))
 					.count();
-
-		} catch (IOException e) {
-			logger.error("Error while calculating get95Percentile::", e.getMessage());
-		} finally {
-			if (stream != null) {
-				stream.close();
-			}
-		}
-
+			stream.close();
 		logger.debug("Average of Valid Requests::" + requestsCount);
 
 		return 0.95 * requestsCount;
 	}
 
 	@GetMapping(path = "/get99Percentile", produces = "application/json")
-	public double get99Percentile() {
-		Stream<String> stream = null;
-		Long requestsCount = 0l;
-		try {
-			stream = Files.lines(Paths.get(path));
-			requestsCount = stream.filter(line -> line.startsWith("REQUEST")).filter(line -> !line.contains("\tKO\t"))
+	public double get99Percentile() throws IOException {
+			Stream<String> stream = Files.lines(Paths.get(path));
+			Long requestsCount = stream.filter(line -> line.startsWith("REQUEST")).filter(line -> !line.contains("\tKO\t"))
 					.count();
-
-		} catch (IOException e) {
-			logger.error("Error while calculating get99Percentile::", e.getMessage());
-		} finally {
-			if (stream != null) {
-				stream.close();
-			}
-		}
+			stream.close();
 
 		logger.debug("Average of Valid Requests::" + requestsCount);
 
@@ -112,11 +79,8 @@ public class ParserController {
 	}
 
 	@GetMapping(path = "/getAverageResponseTime", produces = "application/json")
-	public Double getAverageResponseTime() {
-		Stream<String> stream = null;
-		Double average = null;
-		try {
-			stream = Files.lines(Paths.get(path));
+	public Double getAverageResponseTime() throws IOException {
+			Stream<String> stream = Files.lines(Paths.get(path));
 			List<String> requestlines = stream.filter(line -> line.startsWith("REQUEST"))
 					.filter(line -> !line.contains("\tKO\t")).collect(Collectors.toList());
 
@@ -126,21 +90,14 @@ public class ParserController {
 			}
 
 			OptionalDouble avg = list.stream().mapToDouble(a -> a).average();
-			average = avg.getAsDouble();
-		} catch (IOException e) {
-			logger.error("Error while calculating getAverageResponseTime::", e.getMessage());
-		} finally {
-			if (stream != null) {
+			Double average = avg.getAsDouble();
 				stream.close();
-			}
-		}
-
 		logger.debug("Average of Valid Requests::" + average);
 
 		return average;
 	}
 
-	@ExceptionHandler({ Exception.class })
+	@ExceptionHandler({ Exception.class, IOException.class })
 	public ResponseEntity<Object> handleException() {
 		return new ResponseEntity<Object>("Unable to process the request", HttpStatus.BAD_REQUEST);
 	}
